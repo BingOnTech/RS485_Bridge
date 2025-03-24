@@ -6,23 +6,21 @@ import serial
 import serial.tools.list_ports
 import platform
 
-system = platform.system()
-
-if system == 'Linux':
-    print("Linux 운영체제입니다.")
-else :
-    print("지원 하지 않는 운영체계입니다")
-    sys.exit(1)
 
 def booting():
+    system = platform.system()
+    if system == "Linux":
+        print("Linux 운영체제입니다.")
+    else:
+        print("지원 하지 않는 운영체계입니다")
+        sys.exit(1)
+
     selected_port = select_port()
     print("포트 연결 중")
     serial = connect_serial(selected_port)
     print("환경 설정 파일 읽어오는 중")
     load_config()
-    print("서버 연결 중")
-    server = connect_server("louk342.iptime.org", 8888, "test_data")
-    return serial, server
+    return serial
 
 
 def list_serial_ports():
@@ -43,7 +41,7 @@ def wait_for_ports():
 
 
 def select_port():
-    """사용자가 포트를 선택할 수 있도록 함"""
+    """사용자가 포트를 선택"""
     while True:
         ports = wait_for_ports()  # 포트가 감지될 때까지 대기
 
@@ -87,18 +85,3 @@ def load_config(filename="config.json"):
     except json.JSONDecodeError:
         print(f"❌ 설정 파일 '{filename}'의 JSON 형식이 잘못되었습니다.")
         sys.exit(1)
-
-
-def connect_server(SERVER_HOST, SERVER_PORT, info):
-    """서버에 연결하는 함수"""
-    try:
-        print(f"🔌 서버에 연결합니다.")
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        client_socket.sendto(info.encode(), (SERVER_HOST, SERVER_PORT))
-
-        response, server_address = client_socket.recvfrom(1024)
-        print(f"📩 서버 응답: {response.decode()}")
-    except Exception as e:
-        print(f"❌ 서버 연결 중 오류 발생: {e}")
-    finally:
-        client_socket.close()

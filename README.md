@@ -2,9 +2,26 @@
 
 RS485 USB Serial 를 통해 받은 데이터 처리 후 서버로 전송
 
-## environment
+## 사용 명령어 모음
 
-- python 3.13.0
+```bash
+# 서버 실행
+python src/app/main.py
+# DB -> csv
+python src/tools/getDBdata.py
+```
+
+## 패키지 및 버전 관리
+
+```bash
+# venv
+python3 -m  venv .venv
+source .venv/bin/activate
+deactivate
+# package
+pip freeze > requirements.txt
+pip install -r requirements.txt
+```
 
 ## 시리얼 설정
 
@@ -28,10 +45,10 @@ RS485 USB Serial 를 통해 받은 데이터 처리 후 서버로 전송
 ## 응답 코드 예시
 
 ```bash
-$$1401;
+$$0101;
 $080000 5.18 7.0699.0099.0005
 
-$$1410;
+$$0110;
 $14 SIWC V2.6 ASL-24071420 
 
 기타
@@ -50,11 +67,4 @@ $040505 7.43 7.68 6.2599.001C
 $030C04 7.31 7.25 6.37 6.3771
 $020C04 7.12 8.31 6.37 6.2578
 $010404 7.25 7.3199.00 6.5017
-```
-
-## 패키지 관리
-
-```bash
-pip freeze > requirements.txt
-pip install -r requirements.txt
 ```
