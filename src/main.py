@@ -1,8 +1,9 @@
 from start import booting
+import sys
 
 # from logger import log
-from data_slice import data_slice
-from serial.rs485 import RS485
+# from data_slice import data_slice
+# from serial.rs485 import RS485
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
 
@@ -50,14 +51,22 @@ def handle_request_data():
 
 
 if __name__ == "__main__":
-    booting()
+    ser = booting()
+    if ser == None:
+        print("Serial port Error--")
+        sys.exit(1)
     # PLC 객체 생성
     plcs = {i: PLC(i) for i in range(1, 17)}  # 16개의 PLC 생성
     # websocket
     socketio.run(app, host="0.0.0.0", port=5000)
 
-    command = "/1ZR\r"
-    buffer = "AABBCCDDEEFF112233445566778899"  # 예제 데이터
-    plc_number = 1  # 예제 PLC 번호
+    command = "$$0101;\r"
+    command_bytes = command.encode("ASCII")
+    ser.write(command_bytes)
+    response = ser.readline().decode()
+    print(response)
+    ser.close()
+    ## buffer = "AABBCCDDEEFF112233445566778899"  # 예제 데이터
+    ## plc_number = 1  # 예제 PLC 번호
 
-    data_slice(buffer, plcs[plc_number])
+    ## data_slice(buffer, plcs[plc_number])

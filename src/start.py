@@ -1,7 +1,7 @@
-import os
+# import os
 import sys
-import json
-import socket
+
+# import json
 import serial
 import serial.tools.list_ports
 import platform
@@ -18,9 +18,13 @@ def booting():
     selected_port = select_port()
     print("포트 연결 중")
     serial = connect_serial(selected_port)
-    print("환경 설정 파일 읽어오는 중")
-    load_config()
-    return serial
+    if serial:
+        return serial
+    else:
+        print("시리얼 포트 연결 오류")
+        return None
+    # print("환경 설정 파일 읽어오는 중")
+    # load_config()
 
 
 def list_serial_ports():
@@ -62,7 +66,7 @@ def select_port():
 def connect_serial(port):
     """선택한 포트로 시리얼 연결"""
     try:
-        ser = serial.Serial(port, baudrate=9600, timeout=1)
+        ser = serial.Serial(port, baudrate=9600, timeout=2)
         print(f"\n✅ {port} 포트에 연결되었습니다!")
         return ser
     except serial.SerialException as e:
@@ -70,6 +74,7 @@ def connect_serial(port):
         return None
 
 
+'''
 def load_config(filename="config.json"):
     """JSON 설정 파일을 불러오는 함수 (예외 처리 포함)"""
     if not os.path.exists(filename):
@@ -85,3 +90,4 @@ def load_config(filename="config.json"):
     except json.JSONDecodeError:
         print(f"❌ 설정 파일 '{filename}'의 JSON 형식이 잘못되었습니다.")
         sys.exit(1)
+'''

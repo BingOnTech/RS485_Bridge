@@ -24,7 +24,7 @@ pip install -r requirements.txt
 ```
 
 ## 시리얼 설정
-
+- /dev/ttyUSB0
 - baudRate: 9600
 - dataBits: 8
 - stopBits: 1
