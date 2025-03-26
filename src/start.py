@@ -1,7 +1,4 @@
-# import os
 import sys
-
-# import json
 import serial
 import serial.tools.list_ports
 import platform

@@ -2,10 +2,8 @@
 import sys
 import time
 import os
-
 # 현재 파일의 경로를 기준으로 상위 디렉토리(`../start` 경로 추가)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from start import booting  # start.py에서 booting 함수 가져오기
 
 PLC_NUM = "01"
