@@ -1,16 +1,19 @@
-from start import booting
-from db import fetch_query, execute_query
-
 # from logger import log
+from start import booting
 from data_slice import data_slice
-
+from db import fetch_query, execute_query
+from dotenv import load_dotenv
 import sys
 import time
 import threading
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
+import os
+
+load_dotenv()
 
 TIMEOUT = 10
+MAX_NUM = os.getenv("MAX_NUM", 16)
 
 
 class Drum:
@@ -98,8 +101,12 @@ if __name__ == "__main__":
     thread.start()
     time.sleep(1)
 
-    command = "$$0101;"
+    num = 0
+
     while True:
+        num += 1
+        command = "$$" + (str(num).zfill(2)) + "01;"
+
         req(ser, command)
         response = res()
 
@@ -111,4 +118,9 @@ if __name__ == "__main__":
         data_slice(buffer, plc[plc_number])
 
         for j in range(1, 5):
-            plc.drum[j].show()
+            plc[plc_number].drum[j].show()
+
+        plc[plc_number]
+
+        if num == MAX_NUM:
+            num = 0

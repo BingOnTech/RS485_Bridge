@@ -10,8 +10,8 @@ load_dotenv()
 DB_CONFIG = {
     "host": os.getenv("DATABASE_HOST", "localhost"),
     "user": os.getenv("DATABASE_USER", "root"),
-    "password": os.getenv("DATABASE_PASSWORD", ""),
-    "database": os.getenv("DATABASE_NAME", "test_db"),
+    "password": os.getenv("DATABASE_PASSWORD"),
+    "database": os.getenv("DATABASE_NAME"),
     "pool_name": "mypool",
     "pool_size": 5,  # 최대 5개의 연결 유지
 }
@@ -79,6 +79,26 @@ def fetch_query(query, params=None):
     finally:
         cursor.close()
         conn.close()  # 연결 반환
+
+
+def test_db_connection():
+    """DB 연결 및 기본 쿼리 실행 테스트"""
+    print("🔍 데이터베이스 연결 테스트 중...")
+    conn = get_connection()
+    if conn is None:
+        print("❌ DB 연결 실패")
+        return False
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        print("✅ DB 연결 테스트 성공")
+        return True
+    except Error as e:
+        print(f"❌ DB 연결 테스트 실패: {e}")
+        return False
+    finally:
+        cursor.close()
+        conn.close()
 
 
 # 테스트 코드 (파일 실행 시 실행됨)
