@@ -1,19 +1,36 @@
 # from logger import log
 from start import booting
 from data_slice import data_slice
-from db import fetch_query, execute_query
+from db import execute_query
 from dotenv import load_dotenv
 import sys
 import time
+from datetime import datetime
 import threading
-from flask import Flask, request, jsonify
-from flask_socketio import SocketIO, emit
-import os
+from flask import Flask, request
+from flask_socketio import SocketIO
 
 load_dotenv()
 
 TIMEOUT = 10
-MAX_NUM = os.getenv("MAX_NUM", 16)
+NUM = [
+    "01",
+    "02",
+    "03",
+    "04",
+    "05",
+    "06",
+    "07",
+    "08",
+    "09",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+]
 
 
 class Drum:
@@ -35,25 +52,34 @@ class PLC:
         self.plc_id = plc_id
         self.drum = {i: Drum() for i in range(1, 5)}  # 1~4번 통 관리
 
+    def to_dict(self):
+        return {
+            "plc_id": self.plc_id,
+            "drum": {key: drum.__dict__ for key, drum in self.drum.items()},
+        }
+
 
 app = Flask(__name__)
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 
+# 소켓 연결 요청
 @socketio.on("connect")
 def handle_connect():
     user = request.args.get("user")
+
     if not user:
         return False  # 인증 실패 시 연결 거부
 
     print(f"User {user} connected")
-    emit("message", f"Welcome {user}!")
 
 
+"""
 @socketio.on("request_data")
 def handle_request_data():
     emit("message", "실시간 데이터 예제 값")
+"""
 
 
 def run_socketio():
@@ -64,7 +90,7 @@ def req(ser, command):
     try:
         command_bytes = command.encode("utf-8")
         ser.write(command_bytes)
-        print(f"📤 보낸 데이터: {command}")
+        print(f"\n📤 보낸 데이터: {command}")
     except BaseException as e:
         print(f"❌ 시리얼 통신 오류: {e}")
 
@@ -92,35 +118,43 @@ if __name__ == "__main__":
     if ser == None:
         print("Serial port Error--")
         sys.exit(1)
-
     # PLC 객체 생성
     plc = {i: PLC(i) for i in range(1, 17)}  # 16개의 PLC 생성
 
     # websocket
     thread = threading.Thread(target=run_socketio, daemon=True)
     thread.start()
+    # socketio.run(app, host="0.0.0.0", port=5000)
     time.sleep(1)
 
-    num = 0
-
     while True:
-        num += 1
-        command = "$$" + (str(num).zfill(2)) + "01;"
+        current_minute = datetime.now().minute
 
-        req(ser, command)
-        response = res()
+        for num in NUM:
+            command = "$$" + num + "01;"
 
-        if response == False:
-            continue
+            # 시리얼 통신
+            req(ser, command)
+            response = res()
 
-        response = response.lstrip("$")
-        plc_number, buffer = int(response[:2]), response[2:]
-        data_slice(buffer, plc[plc_number])
+            if response == False:
+                continue
 
-        for j in range(1, 5):
-            plc[plc_number].drum[j].show()
+            # 데이터 처리
+            response = response.lstrip("$")
+            plc_number, buffer = int(response[:2]), response[2:]
+            data_slice(buffer, plc[plc_number])
 
-        plc[plc_number]
+            for j in range(1, 5):
+                plc[plc_number].drum[j].show()
 
-        if num == MAX_NUM:
-            num = 0
+            # 클라이언트에 데이터 전송
+            socketio.emit("plc_data", {plc_number: plc[plc_number].to_dict()})
+
+            # DB에 저장
+            """
+            query = ""
+            execute_query()
+            """
+        while datetime.now().minute == current_minute:
+            time.sleep(1)

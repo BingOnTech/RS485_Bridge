@@ -91,6 +91,7 @@ def test_db_connection():
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT 1")
+        cursor.fetchone()
         print("✅ DB 연결 테스트 성공")
         return True
     except Error as e:
