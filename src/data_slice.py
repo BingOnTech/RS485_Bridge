@@ -1,5 +1,3 @@
-from src.hex_to_binary import hex_to_binary
-
 # hex_to_binary 함수 대신 bin 함수를 직접 사용하도록 수정
 # 아직 테스트 버전
 def data_slice(buffer, plc):
@@ -51,4 +49,12 @@ def data_slice(buffer, PLC):
     except Exception as error:
         print(f"Error while data slicing: {buffer}")
         print(error)
+
+def hex_to_binary(hex_digit):
+    try:
+        binary_digit = bin(int(hex_digit, 16))[2:].zfill(4)
+        return binary_digit
+    except Exception as error:
+        print("Error while hex -> bin:", error)
+        return None
 """

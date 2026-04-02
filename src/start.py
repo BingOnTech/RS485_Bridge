@@ -6,7 +6,6 @@ import serial
 import serial.tools.list_ports
 import platform
 
-
 def booting():
     system = platform.system()
     if system == "Linux":

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Factory Monitoring System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { display: flex; flex-wrap: wrap; gap: 20px; }
+        .card { 
+            background: white; padding: 20px; border-radius: 10px; 
+            width: 200px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+        }
+        .card h2 { margin-top: 0; color: #333; }
+        .value { font-size: 1.2em; font-weight: bold; color: #007bff; }
+        .status-on { color: green; }
+        .status-off { color: red; }
+    </style>
+</head>
+<body>
+    <h1>🏭 실시간 드럼 모니터링</h1>
+    <div id="status">시스템 상태: 연결 대기중...</div>
+    <div class="container" id="drum-container">
+        </div>
+
+    <script>
+        const socket = io();
+        const container = document.getElementById('drum-container');
+
+        socket.on('connect', () => {
+            document.getElementById('status').innerText = "시스템 상태: 🟢 실시간 연결됨";
+        });
+
+        socket.on('update_data', (msg) => {
+            const drums = msg.drums;
+            container.innerHTML = ""; // 기존 내용 지우기
+
+            drums.forEach(drum => {
+                const html = `
+                    <div class="card">
+                        <h2>Drum #${drum.id}</h2>
+                        <p>온도: <span class="value">${drum.temp}°C</span></p>
+                        <p>수위: <span class="value">${drum.level}</span></p>
+                        <p>밸브(IN): <b class="${drum.in ? 'status-on' : 'status-off'}">${drum.in ? 'OPEN' : 'CLOSE'}</b></p>
+                        <p>밸브(OUT): <b class="${drum.out ? 'status-on' : 'status-off'}">${drum.out ? 'OPEN' : 'CLOSE'}</b></p>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+        });
+    </script>
+</body>
+</html>

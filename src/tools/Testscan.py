@@ -1,7 +1,7 @@
 import time
 import serial
 
-ser = serial.Serial("", baudrate=9600, timeout=1)
+ser = serial.Serial("COM4", baudrate=9600, timeout=1)
 
 command = "$$0110;"
 command_bytes = command.encode("ASCII")
