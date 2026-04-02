@@ -2,8 +2,8 @@
 # 아직 테스트 버전
 def data_slice(buffer, plc):
     try:
-        level = bin(int(buffer[3:4], 16))[2:].zfill(4) + bin(int(buffer[4:5], 16))[2:].zfill(4)
-        valve = bin(int(buffer[5:6], 16))[2:].zfill(4) + bin(int(buffer[6:7], 16))[2:].zfill(4)
+        level = bin(int(buffer[1:2], 16))[2:].zfill(4) + bin(int(buffer[2:3], 16))[2:].zfill(4)
+        valve = bin(int(buffer[3:4], 16))[2:].zfill(4) + bin(int(buffer[4:5], 16))[2:].zfill(4)
 
         for j in range(1, 5):
             i = 8 - ((j - 1) * 2)
@@ -11,15 +11,13 @@ def data_slice(buffer, plc):
             plc.drum[j].high = level[i - 2 : i - 1]  # H
             plc.drum[j].in_valve = valve[i - 1 : i]  # IN
             plc.drum[j].out = valve[i - 2 : i - 1]  # OUT
-
+        
         for j in range(1, 5):
-            i = 7 + ((j - 1) * 5)
-            plc.drum[j].temp = int(buffer[i : i + 5])  # 온도
-
-        for j in range(1, 5):
-            plc.drum[j].show()  # 보여주기
+            i = 4 + ((j - 1) * 5)
+            plc.drum[j].temp = float(buffer[i : i + 5])
 
     except Exception as error:
+        print("")
         print(f"Error while data slicing: {buffer}")
         print(error)
 
@@ -49,12 +47,4 @@ def data_slice(buffer, PLC):
     except Exception as error:
         print(f"Error while data slicing: {buffer}")
         print(error)
-
-def hex_to_binary(hex_digit):
-    try:
-        binary_digit = bin(int(hex_digit, 16))[2:].zfill(4)
-        return binary_digit
-    except Exception as error:
-        print("Error while hex -> bin:", error)
-        return None
 """

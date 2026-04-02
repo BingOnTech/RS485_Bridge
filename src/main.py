@@ -1,10 +1,10 @@
-from start import booting
-
 # from logger import log
+from start import booting
 from data_slice import data_slice
 from serial.rs485 import RS485
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
+
 
 class Drum:
     """드럼통 클래스"""
@@ -52,35 +52,100 @@ class PLC:
 
 app = Flask(__name__)
 
-buffer = ""
-
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 
+# 소켓 연결 요청
 @socketio.on("connect")
 def handle_connect():
     user = request.args.get("user")
+
     if not user:
         return False  # 인증 실패 시 연결 거부
 
     print(f"User {user} connected")
-    emit("message", f"Welcome {user}!")
 
 
+"""
 @socketio.on("request_data")
 def handle_request_data():
     emit("message", "실시간 데이터 예제 값")
+"""
+
+
+def run_socketio():
+    socketio.run(app, host="0.0.0.0", port=5000)
+
+
+def req(ser, command):
+    try:
+        command_bytes = command.encode("utf-8")
+        ser.write(command_bytes)
+        print(f"\n📤 보낸 데이터: {command}")
+    except BaseException as e:
+        print(f"❌ 시리얼 통신 오류: {e}")
+
+
+def res():
+    start_time = time.time()
+    response = ""
+
+    while time.time() - start_time < TIMEOUT:
+        if ser.in_waiting > 0:  # 수신된 데이터가 있는 경우
+            response = ser.readline().decode().strip()
+            break
+        time.sleep(0.1)  # CPU 점유율 방지 (0.1초 대기)
+
+    if response:
+        print(f"📥 받은 응답: {response}")
+        return response
+    else:
+        print("⚠ 응답 없음 (타임아웃)")
+        return False
 
 
 if __name__ == "__main__":
-    booting()
+    ser = booting()
+    if ser == None:
+        print("Serial port Error--")
+        sys.exit(1)
     # PLC 객체 생성
-    plcs = {i: PLC(i) for i in range(1, 17)}  # 16개의 PLC 생성
+    plc = {i: PLC(i) for i in range(1, 17)}  # 16개의 PLC 생성
+
     # websocket
-    socketio.run(app, host="0.0.0.0", port=5000)
+    thread = threading.Thread(target=run_socketio, daemon=True)
+    thread.start()
+    # socketio.run(app, host="0.0.0.0", port=5000)
+    time.sleep(1)
 
-    command = "/1ZR\r"
-    buffer = "AABBCCDDEEFF112233445566778899"  # 예제 데이터
-    plc_number = 1  # 예제 PLC 번호
+    while True:
+        current_minute = datetime.now().minute
 
-    data_slice(buffer, plcs[plc_number])
+        for num in NUM:
+            command = "$$" + num + "01;"
+
+            # 시리얼 통신
+            req(ser, command)
+            response = res()
+
+            if response == False:
+                continue
+
+            # 데이터 처리
+            response = response.lstrip("$")
+            plc_number, buffer = int(response[:2]), response[2:]
+            data_slice(buffer, plc[plc_number])
+
+            for j in range(1, 5):
+                plc[plc_number].drum[j].show()
+
+            # 클라이언트에 데이터 전송
+            socketio.emit("plc_data", {plc_number: plc[plc_number].to_dict()})
+
+            # DB에 저장
+            """
+            query = ""
+            execute_query()
+            """
+        while datetime.now().minute == current_minute:
+            time.sleep(1)
