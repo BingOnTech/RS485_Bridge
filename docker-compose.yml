@@ -1,33 +1,21 @@
 version: '3.8'
 
 services:
-  # 1. 가상 사설망 통로 (Tailscale)
-  ts-bridge:
-    image: tailscale/tailscale:latest
-    container_name: ts-bridge
-    hostname: factory-bridge-01
-    cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    volumes:
-      - ./tailscale:/var/lib/tailscale
-      - /dev:/dev
-    environment:
-      - TS_STATEFUL_CONFIG=true
-      - TS_EXTRA_ARGS=--login-server=http://<YOUR_HEADSCALE_IP>:8080 # Headscale 서버 주소
+  bridge-app:
+    # Dockerfile이 있는 경로 지정
+    build:
+      context: ./src/BridgeApp
+      dockerfile: Dockerfile
+    container_name: rs485-bridge
     restart: unless-stopped
 
-  # 2. 실제 RS485 통신 앱 (C#)
-  bridge-app:
-    build: .
-    container_name: bridge-app
-    # 중요: ts-bridge의 네트워크를 공유하여 가상 IP를 함께 사용함
-    network_mode: "service:ts-bridge"
-    depends_on:
-      - ts-bridge
+    # 환경 변수 주입 (C# 코드가 이 값을 읽어서 포트를 엽니다)
+    environment:
+      - SERIAL_PORT=/dev/ttyUSB0
+
+    # ⚠️ 리눅스 환경 필수: 호스트의 USB를 컨테이너 안으로 패스스루
     devices:
-      - "/dev/ttyUSB0:/dev/ttyUSB0" # RS485 USB 매핑
+      - "/dev/ttyUSB0:/dev/ttyUSB0"
+
+    # 장치 접근 권한 부여
     privileged: true
-    restart: unless-stopped

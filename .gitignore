@@ -1,0 +1,23 @@
+# 1. C# 빌드 결과물 (가장 중요: 절대 올리면 안 됨)
+[Bb]in/
+[Oo]bj/
+
+# 2. Visual Studio Code 임시 파일
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# 3. 파이썬 기존 환경 및 캐시 (기존 작업물 충돌 방지)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 4. OS 생성 시스템 파일
+.DS_Store
+Thumbs.db
+
+# 5. 로컬 보안 및 테스트용 환경 설정 (DevOps 기본 소양)
+*.env
+appsettings.Development.json

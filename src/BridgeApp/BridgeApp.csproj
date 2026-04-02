@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>dotnet-BridgeApp-fb4a91e7-7ea8-42e3-9f8b-85d1d969266a</UserSecretsId>
+    <UserSecretsId>dotnet-BridgeApp-43aa24df-0a1c-4c12-b739-f4a3a1ca8768</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
