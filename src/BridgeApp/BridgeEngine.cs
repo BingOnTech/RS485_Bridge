@@ -1,82 +1,103 @@
-using System;
-using System.Collections.Generic;
-using System.IO.Ports;
-using System.Net.NetworkInformation;
-using Microsoft.AspNetCore.SignalR.Client;
+using BridgeApp.Services;
+
+namespace BridgeApp;
 
 public class BridgeEngine
 {
-    private HubConnection? _connection;
-    private SerialPort? _rs485Port;
-    private List<string> _detectedNodeIds = new();
-    private bool _isScanning = false;
+    private readonly string _bridgeName = Environment.GetEnvironmentVariable("BRIDGE_NAME") ?? "None";
+    private readonly Rs485Service _rs485 = new();
+    private readonly MainframeClient _mainframe = new();
+    private readonly LcdService _lcd = new();
+    private List<string> _activeBoards = new();
 
-    // --- 부팅 단계 ---
-
-    public async Task StartAsync()
+    public async Task RunAsync()
     {
-        UpdateLcd("System Booting...");
+        // 1. 초기화 (LCD 및 시리얼)
+        Console.WriteLine("[Bridge] Booting...");
+        _lcd.Start(); // 🌟 LCD 서비스 시작
+        _lcd.UpdateStatus("System", "Initialising...");
 
-        // 1. 인터넷 및 Tailscale 확인
-        while (!CheckInternet()) {
-            UpdateLcd("Waiting for Network...");
-            await Task.Delay(3000);
+        // 1. 초기화
+        string port = OperatingSystem.IsWindows() ? "COM3" : "/dev/ttyUSB0";
+        _rs485.Open(port);
+        _lcd.UpdateOpCode($"Serial Open: {port}");
+
+        // 2. 인터넷 및 메인프레임 연결 시도
+        _lcd.UpdateNet(System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable());
+        _lcd.UpdateMainframe(false);
+
+        // 환경변수에서 URL 가져오도록 수정 권장
+        string url = Environment.GetEnvironmentVariable("MAINFRAME_URL") ?? "http://100.64.x.x:5000/session";
+
+        try
+        {
+            await _mainframe.ConnectAsync(url);
+            _lcd.UpdateMainframe(_mainframe.IsConnected);
+        }
+        catch
+        {
+            _lcd.UpdateMainframe(false);
         }
 
-        // 2. 메인프레임 세션 연결 (SignalR)
-        _connection = new HubConnectionBuilder()
-            .WithUrl("http://100.64.x.x:5000/bridgeHub") // Headscale IP 사용
-            .WithAutomaticReconnect()
-            .Build();
+        // 3. 커맨드보드 자동 스캔
+        await ScanBoards();
 
-        await _connection.StartAsync();
-        UpdateLcd("Mainframe Connected!");
-
-        // 3. 커맨드보드 스캔
-        await ScanCommandBoards();
-
-        // 4. 스캔 결과 보고
-        await _connection.InvokeAsync("ReportNodes", _detectedNodeIds);
-        
-        // --- 상시 모드 진입 ---
-        _isScanning = true;
-        RunMainLoop();
-    }
-
-    private bool CheckInternet() 
-    {
-        try {
-            using var ping = new Ping();
-            var reply = ping.Send("8.8.8.8", 2000);
-            return reply.Status == IPStatus.Success;
-        } catch { return false; }
-    }
-
-    // --- 상시 단계 ---
-
-    private async void RunMainLoop()
-    {
-        while (_isScanning)
+        // 4. 상시 순회 모드
+        while (true)
         {
-            foreach (var id in _detectedNodeIds)
+            if (!_mainframe.IsConnected)
             {
-                // 데이터 획득 -> 파싱 -> 전송
-                string rawData = SendRs485Request(id);
-                if (!string.IsNullOrEmpty(rawData))
+                try
                 {
-                    var parsedData = ParsePacket(id, rawData);
-                    await _connection.InvokeAsync("PushData", parsedData);
+                    await _mainframe.ConnectAsync(url);
+                    _lcd.UpdateMainframe(true);
+                    Console.WriteLine("[NET] Mainframe Reconnected!");
+                }
+                catch
+                {
+                    _lcd.UpdateMainframe(false);
                 }
             }
-            await Task.Delay(1000); // 주기 설정
+
+            _lcd.UpdateOpCode("Polling Active Boards...");
+            foreach (var boardId in _activeBoards)
+            {
+                string raw = _rs485.SendRequest($"$${boardId}01;");
+                if (string.IsNullOrEmpty(raw))
+                {
+                    _lcd.UpdateOpCode($"Board {boardId} No Resp!"); // 응답 없음 표시
+                }
+
+                var data = _rs485.Parse(raw);
+                data.BridgeName = _bridgeName;
+                if (_mainframe.IsConnected && !string.IsNullOrEmpty(data.BoardId))
+                {
+                    await _mainframe.PushData(data);
+                }
+            }
+            await Task.Delay(2000);
         }
     }
 
-    private void UpdateLcd(string message)
+    private async Task ScanBoards()
     {
-        // LCDWiki 3.5" 디스플레이에 상태 출력 로직
-        // CLI 환경이라면 Console.WriteLine과 동시에 
-        // /dev/fb1 프레임버퍼에 텍스트를 쓰는 로직이 들어갑니다.
-        Console.WriteLine($"[STATUS] {message}");
+        Console.WriteLine("[SCAN] Starting CommandBoard Discovery...");
+        _lcd.UpdateOpCode("Scanning Boards...");
+        int failCount = 0;
+        for (int i = 1; i <= 99; i++)
+        {
+            string id = i.ToString("D2");
+            string res = _rs485.SendRequest($"$${id}10;"); // 펌웨어 체크용
+
+            if (res.Contains("$" + id))
+            {
+                _activeBoards.Add(id);
+                failCount = 0;
+                Console.WriteLine($"[FOUND] CommandBoard {id} Detected.");
+            }
+            else failCount++;
+
+            if (failCount >= 2 && _activeBoards.Count > 0) break;
+        }
     }
 }

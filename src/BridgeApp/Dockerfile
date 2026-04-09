@@ -1,19 +1,28 @@
-# 1. 빌드용 환경 (무거운 도구 포함)
+# 1. 빌드 스테이지 (SDK 포함)
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /app
 
-# 프로젝트 파일만 먼저 복사해서 패키지 다운로드 (캐시 최적화)
-COPY *.csproj ./
+# 프로젝트 파일 복사 및 라이브러리 복구
+COPY ["BridgeApp.csproj", "./"]
 RUN dotnet restore
 
-# 나머지 소스코드 전부 복사 후 최종 빌드
-COPY . ./
+# 전체 소스 복사 및 빌드
+COPY . .
 RUN dotnet publish -c Release -o out
 
-# 2. 실행용 런타임 환경 (최대한 가볍게)
-FROM mcr.microsoft.com/dotnet/runtime:10.0
+# 2. 실행 스테이지 (가벼운 Runtime만 포함)
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
 WORKDIR /app
-COPY --from=build /app/out .
 
-# 실행 명령어
+# 파이썬 및 라이브러리 설치 (LCD 구동용)
+RUN apt-get update && apt-get install -y python3 python3-pip python3-pil
+
+COPY --from=build /app/out .
+# 🌟 파이썬 스크립트도 실행 폴더로 복사!
+COPY bridge_lcd.py .
+
+# 라즈베리파이의 시리얼 포트 접근 권한을 위해 
+# 보통 dialout 그룹에 추가하는 작업이 필요할 수 있습니다.
+# 하지만 docker-compose에서 privileged 설정을 주는 것이 가장 확실합니다.
+
 ENTRYPOINT ["dotnet", "BridgeApp.dll"]

@@ -1,21 +1,38 @@
 version: '3.8'
 
 services:
-  bridge-app:
-    # Dockerfile이 있는 경로 지정
-    build:
-      context: ./src/BridgeApp
-      dockerfile: Dockerfile
-    container_name: rs485-bridge
-    restart: unless-stopped
-
-    # 환경 변수 주입 (C# 코드가 이 값을 읽어서 포트를 엽니다)
+  # 🌟 Tailscale 서비스: Headscale에 자동 조인 수행
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: ts-bridge
+    hostname: ${BRIDGE_NAME} # Headscale에 등록될 이름
     environment:
-      - SERIAL_PORT=/dev/ttyUSB0
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_EXTRA_ARGS=--login-server ${HEADSCALE_URL}
+      - TS_STATE_DIR=/var/lib/tailscale
+    volumes:
+      - ts-data:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun # 네트워크 터널 권한
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    restart: always
 
-    # ⚠️ 리눅스 환경 필수: 호스트의 USB를 컨테이너 안으로 패스스루
+  bridge-app:
+    container_name: rs485-bridge
+    build: .
+    restart: always
+    # 🌟 중요: 앱 컨테이너가 테일스케일 네트워크를 공유하게 함
+    network_mode: "service:tailscale"
+    depends_on:
+      - tailscale
     devices:
       - "/dev/ttyUSB0:/dev/ttyUSB0"
-
-    # 장치 접근 권한 부여
     privileged: true
+    environment:
+      - BRIDGE_NAME=${BRIDGE_NAME}
+      - MAINFRAME_URL=${MAINFRAME_URL}
+      - DOTNET_ENVIRONMENT=Production
+
+volumes:
+  ts-data: # 테일스케일 로그인 상태 유지용

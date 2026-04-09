@@ -1,7 +1,4 @@
 using BridgeApp;
 
-var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<Worker>();
-
-var host = builder.Build();
-host.Run();
+var engine = new BridgeEngine();
+await engine.RunAsync();
