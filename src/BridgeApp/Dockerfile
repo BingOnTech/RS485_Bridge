@@ -15,7 +15,7 @@ FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
 WORKDIR /app
 
 # 파이썬 및 라이브러리 설치 (LCD 구동용)
-RUN apt-get update && apt-get install -y python3 python3-pip python3-pil
+RUN apt-get update && apt-get install -y python3 python3-pip python3-pil python3-numpy
 
 COPY --from=build /app/out .
 # 🌟 파이썬 스크립트도 실행 폴더로 복사!
