@@ -12,7 +12,8 @@ services:
       - TS_STATE_DIR=/var/lib/tailscale
     volumes:
       - ts-data:/var/lib/tailscale
-      - /dev/net/tun:/dev/net/tun # 네트워크 터널 권한
+    devices:
+      - /dev/net/tun:/dev/net/tun
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
