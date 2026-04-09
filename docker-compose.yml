@@ -20,7 +20,9 @@ services:
 
   bridge-app:
     container_name: rs485-bridge
-    build: .
+    build:
+      context: .
+      dockerfile: ./src/BridgeApp/Dockerfile
     restart: always
     # 🌟 중요: 앱 컨테이너가 테일스케일 네트워크를 공유하게 함
     network_mode: "service:tailscale"
