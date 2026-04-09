@@ -22,9 +22,11 @@ def draw_status(data_map):
     draw.text((20, 200), data_map.get('OPCODE', 'Idle'), fill=(255, 165, 0))
 
     try:
+        img_16bit = img.convert('BGR;16')
         with open(FB_PATH, "wb") as f:
             f.write(img.tobytes())
-    except:
+    except Exception as e:
+        print(f"LCD Write Error: {e}")
         pass
 
 if __name__ == "__main__":
