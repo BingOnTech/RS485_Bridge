@@ -8,7 +8,7 @@ services:
     hostname: ${BRIDGE_NAME} # Headscale에 등록될 이름
     environment:
       - TS_AUTHKEY=${TS_AUTHKEY}
-      - TS_EXTRA_ARGS=--login-server ${HEADSCALE_URL} --insecure-controls
+      - TS_EXTRA_ARGS=--login-server ${HEADSCALE_URL} --reset
       - TS_STATE_DIR=/var/lib/tailscale
     volumes:
       - ts-data:/var/lib/tailscale
