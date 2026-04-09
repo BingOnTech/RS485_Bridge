@@ -22,6 +22,8 @@ def draw_status(data_map):
     draw.text((10, 170), "Last OpCode:", fill=(200, 200, 200))
     draw.text((20, 200), data_map.get('OPCODE', 'Idle'), fill=(255, 165, 0))
 
+    img = img.rotate(180)
+    
     try:
         # 2. 이미지를 넘파이 배열로 변환 (R, G, B 채널 분리)
         img_array = np.array(img, dtype=np.uint16)
