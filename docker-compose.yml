@@ -2,9 +2,9 @@ version: '3.8'
 
 services:
   tailscale:
-    image: tailscale/tailscale:stable
+    image: tailscale/tailscale:latest
     container_name: ts-bridge
-    hostname: ${BRIDGE_NAME} # Headscale에 등록될 이름
+    hostname: ${BRIDGE_NAME}
     environment:
       - TS_AUTHKEY=${TS_AUTHKEY}
       - TS_EXTRA_ARGS=--login-server ${HEADSCALE_URL} --reset
