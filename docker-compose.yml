@@ -21,6 +21,7 @@ services:
 
   bridge-app:
     container_name: rs485-bridge
+    user: root
     build:
       context: .
       dockerfile: ./src/BridgeApp/Dockerfile
