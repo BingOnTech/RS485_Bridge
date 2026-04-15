@@ -12,8 +12,8 @@ public class BridgeEngine
     private List<string> _activeBoards = new();
     private DateTime _lastNetCheckTime = DateTime.MinValue;
     private bool _isNetUpCached = false;
-    private bool _wasVpnUp = false;
-    private bool _wasMainframeConnected = false;
+    private bool? _wasVpnUp = null;
+    private bool? _wasMainframeConnected = null;
 
     public async Task RunAsync()
     {
@@ -26,6 +26,7 @@ public class BridgeEngine
                      ?? "http://100.64.0.1:5000/bridgeHub";
 
         // ... 상단 생략 ...
+        Console.WriteLine("[Bridge] Main loop started...");
         while (true)
         {
             // 1. USB 포트 체크
@@ -72,7 +73,12 @@ public class BridgeEngine
 
             if (usbExists && !_rs485.IsOpen)
             {
-                try { _rs485.Open(port); } catch (Exception ex) { Console.WriteLine($"[RS485 Error] Failed to open: {ex.Message}"); }
+                try
+                {
+                    _rs485.Open(port);
+                    Console.WriteLine($"[RS485] Successfully opened {port}");
+                }
+                catch (Exception ex) { Console.WriteLine($"[RS485 Error] Failed to open: {ex.Message}"); }
             }
 
             // 장비 폴링 루프
@@ -128,6 +134,7 @@ public class BridgeEngine
             if (failCount >= 2) break;
             await Task.Delay(50);
         }
+        Console.WriteLine($"[RS485] Scan Done. Active boards: {_activeBoards.Count}");
         _lcd.Send("OPCODE", $"Scan Done: {_activeBoards.Count}");
     }
 
