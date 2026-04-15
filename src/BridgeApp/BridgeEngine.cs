@@ -90,6 +90,9 @@ public class BridgeEngine
                     string raw = _rs485.SendRequest($"$${boardId}01;");
                     if (string.IsNullOrEmpty(raw)) continue;
 
+                    // 보드에서 데이터를 잘 읽어오고 있는지 확인하기 위한 디버깅 로그
+                    Console.WriteLine($"[RS485] Board {boardId} Data: {raw.Trim()}");
+
                     var data = _rs485.Parse(raw);
                     data.BridgeName = _bridgeName;
 
