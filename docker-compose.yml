@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # 🌟 Tailscale 서비스: Headscale에 자동 조인 수행
   tailscale:
     image: tailscale/tailscale:latest
     container_name: ts-bridge
@@ -26,13 +25,13 @@ services:
       context: .
       dockerfile: ./src/BridgeApp/Dockerfile
     restart: always
-    # 🌟 중요: 앱 컨테이너가 테일스케일 네트워크를 공유하게 함
     network_mode: "service:tailscale"
     depends_on:
       - tailscale
     devices:
-      - "/dev/rs485:/dev/rs485"
       - "/dev/fb1:/dev/fb1"
+    volumes:
+      - /dev:/dev
     privileged: true
     environment:
       - BRIDGE_NAME=${BRIDGE_NAME}
