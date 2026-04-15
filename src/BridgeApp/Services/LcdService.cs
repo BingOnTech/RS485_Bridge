@@ -11,13 +11,12 @@ public class LcdService
     {
         try
         {
-            // 라즈베리파이 경로에 맞는 파이썬 스크립트 실행
             _pythonProcess = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "python3",
-                    Arguments = "bridge_lcd.py", // 파이썬 파일명
+                    Arguments = "bridge_lcd.py",
                     UseShellExecute = false,
                     RedirectStandardInput = true,
                     CreateNoWindow = true
@@ -25,7 +24,8 @@ public class LcdService
             };
             _pythonProcess.Start();
             _inputStream = _pythonProcess.StandardInput;
-            UpdateStatus("System", "Booting...");
+
+            Send("OPCODE", "Booting...");
         }
         catch (Exception ex)
         {
@@ -33,27 +33,22 @@ public class LcdService
         }
     }
 
-    // 파이썬으로 "키:값" 형태의 메시지를 보냄
-    private void SendToPython(string key, string value)
-    {
-        if (_inputStream != null && _pythonProcess != null && !_pythonProcess.HasExited)
-        {
-            _inputStream.WriteLine($"{key}|{value}");
-            _inputStream.Flush();
-        }
-    }
-
+    // 파이썬으로 "키|값" 형태의 메시지를 보냄 (표준 메서드)
     public void Send(string key, string value)
     {
         if (_inputStream != null && _pythonProcess != null && !_pythonProcess.HasExited)
         {
-            _inputStream.WriteLine($"{key}|{value}");
-            _inputStream.Flush();
+            try
+            {
+                _inputStream.WriteLine($"{key}|{value}");
+                _inputStream.Flush();
+            }
+            catch { /* 프로세스 종료 시 발생할 수 있는 오류 방지 */ }
         }
     }
 
-    public void UpdateStatus(string category, string message) => Send("STATUS", $"{category}: {message}");
+    // 편의용 래퍼 메서드들
+    public void UpdateStatus(string message) => Send("OPCODE", message);
     public void UpdateNet(bool connected) => Send("NET", connected ? "Online" : "Offline");
-    public void UpdateMainframe(bool connected) => Send("MAINFRAME", connected ? "Online" : "Offline");
-    public void UpdateOpCode(string code) => Send("OPCODE", code);
+    public void UpdateServer(bool connected) => Send("SERVER", connected ? "Online" : "Offline");
 }

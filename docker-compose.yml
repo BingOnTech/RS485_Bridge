@@ -1,24 +1,5 @@
 version: '3.8'
-
 services:
-  tailscale:
-    image: tailscale/tailscale:latest
-    container_name: ts-bridge
-    hostname: ${BRIDGE_NAME}
-    environment:
-      - TS_AUTHKEY=${TS_AUTHKEY}
-      - TS_INSECURE_SKIP_VERIFY=true
-      - TS_EXTRA_ARGS=--login-server ${HEADSCALE_URL} --reset
-      - TS_STATE_DIR=/var/lib/tailscale
-    volumes:
-      - ts-data:/var/lib/tailscale
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
-    restart: always
-
   bridge-app:
     container_name: rs485-bridge
     user: root
@@ -26,18 +7,14 @@ services:
       context: .
       dockerfile: ./src/BridgeApp/Dockerfile
     restart: always
-    network_mode: "service:tailscale"
-    depends_on:
-      - tailscale
+    network_mode: "host"
+    privileged: true
     devices:
       - "/dev/fb1:/dev/fb1"
     volumes:
-      - /dev:/dev
-    privileged: true
+      - /dev:/dev # 시리얼 포트 접근용
     environment:
       - BRIDGE_NAME=${BRIDGE_NAME}
       - MAINFRAME_URL=${MAINFRAME_URL}
+      - AES_KEY=${ENCRYPTION_KEY}
       - DOTNET_ENVIRONMENT=Production
-
-volumes:
-  ts-data: # 테일스케일 로그인 상태 유지용

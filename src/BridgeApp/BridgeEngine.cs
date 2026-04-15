@@ -1,5 +1,6 @@
 using System.Net.NetworkInformation;
 using BridgeApp.Services;
+using BridgeApp.Models;
 
 namespace BridgeApp;
 
@@ -7,103 +8,79 @@ public class BridgeEngine
 {
     private readonly string _bridgeName = Environment.GetEnvironmentVariable("BRIDGE_NAME") ?? "None";
     private readonly Rs485Service _rs485 = new();
-    private readonly MainframeClient _mainframe = new();
     private readonly LcdService _lcd = new();
+    private readonly MainframeClient _mainframe; // 생성자에서 주입받음
+
     private List<string> _activeBoards = new();
     private DateTime _lastNetCheckTime = DateTime.MinValue;
     private bool _isNetUpCached = false;
-    private bool? _wasVpnUp = null;
     private bool? _wasMainframeConnected = null;
+
+    // 생성자를 통해 Program.cs에서 초기화된 클라이언트를 전달받습니다.
+    public BridgeEngine(MainframeClient mainframe)
+    {
+        _mainframe = mainframe;
+    }
 
     public async Task RunAsync()
     {
-        Console.WriteLine("[Bridge] Booting...");
+        Console.WriteLine($"[Bridge] Starting Engine: {_bridgeName}");
         _lcd.Start();
 
+        // 환경변수 로드 (하드코딩 제거)
         string port = Environment.GetEnvironmentVariable("RS485_PORT")
                       ?? (OperatingSystem.IsWindows() ? "COM3" : "/dev/rs485");
-        string url = Environment.GetEnvironmentVariable("MAINFRAME_URL")
-                     ?? "http://100.64.0.1:5000/bridgeHub";
 
-        // ... 상단 생략 ...
         Console.WriteLine("[Bridge] Main loop started...");
+
         while (true)
         {
-            // 1. USB 포트 체크
+            // 1. USB(RS485) 하드웨어 체크
             bool usbExists = OperatingSystem.IsWindows() || System.IO.File.Exists(port);
             _lcd.Send("USB", usbExists ? "Connected" : "Disconnected");
 
-            var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
-
-            // 2. Internet 체크
+            // 2. Internet 체크 (구글 DNS 핑)
             bool isNetUp = await CheckInternetConnectivityAsync();
             _lcd.Send("NET", isNetUp ? "Online" : "Offline");
 
-            // 3. VPN 체크
-            bool isVpnUp = networkInterfaces.Any(x => (x.Name.Contains("tailscale") || x.Description.Contains("Tailscale"))
-                                                      && x.OperationalStatus == OperationalStatus.Up);
-            _lcd.Send("VPN", isVpnUp ? "Online" : "Offline");
+            // 3. Mainframe 연결 상태 체크 (VPN 체크 로직 삭제)
+            // SignalR은 스스로 재접속하므로, 여기선 상태 표시만 합니다.
+            bool isConnected = _mainframe.IsConnected;
+            _lcd.Send("SERVER", isConnected ? "Online" : "Offline");
 
-            if (isVpnUp != _wasVpnUp)
+            if (isConnected != _wasMainframeConnected)
             {
-                Console.WriteLine($"[VPN Status] {(isVpnUp ? "Online" : "Offline")}");
-                _wasVpnUp = isVpnUp;
+                Console.WriteLine($"[Mainframe Status] {(isConnected ? "Connected" : "Disconnected")}");
+                _wasMainframeConnected = isConnected;
             }
 
-            // 4. Mainframe 체크 및 연결
-            if (isVpnUp && !_mainframe.IsConnected)
-            {
-                try
-                {
-                    Console.WriteLine($"[Mainframe] Connecting to {url}...");
-                    await _mainframe.ConnectAsync(url);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Mainframe Error] Failed to connect: {ex.Message}");
-                }
-            }
-            _lcd.Send("MAINFRAME", _mainframe.IsConnected ? "Online" : "Offline");
-
-            if (_mainframe.IsConnected != _wasMainframeConnected)
-            {
-                Console.WriteLine($"[Mainframe Status] {(_mainframe.IsConnected ? "Online" : "Offline")}");
-                _wasMainframeConnected = _mainframe.IsConnected;
-            }
-
+            // 4. RS485 포트 오픈
             if (usbExists && !_rs485.IsOpen)
             {
                 try
                 {
                     _rs485.Open(port);
-                    Console.WriteLine($"[RS485] Successfully opened {port}");
+                    Console.WriteLine($"[RS485] Opened {port}");
                 }
-                catch (Exception ex) { Console.WriteLine($"[RS485 Error] Failed to open: {ex.Message}"); }
+                catch (Exception ex) { Console.WriteLine($"[RS485 Error] {ex.Message}"); }
             }
 
-            // 장비 폴링 루프
+            // 5. 데이터 폴링 및 전송
             if (usbExists && _rs485.IsOpen && _activeBoards.Count > 0)
             {
-                _lcd.UpdateOpCode("Polling...");
+                _lcd.Send("OPCODE", "Polling...");
                 foreach (var boardId in _activeBoards)
                 {
                     string raw = _rs485.SendRequest($"$${boardId}01;");
                     if (string.IsNullOrEmpty(raw)) continue;
 
-                    // 보드에서 데이터를 잘 읽어오고 있는지 확인하기 위한 디버깅 로그
-                    Console.WriteLine($"[RS485] Board {boardId} Data: {raw.Trim()}");
-
                     var data = _rs485.Parse(raw);
-                    data.BridgeName = _bridgeName;
+                    data.BridgeName = _bridgeName; // 환경변수에서 읽은 브릿지 이름 삽입
 
-                    // 병목 방지용 비동기 데이터 전송
-                    if (_mainframe.IsConnected && !string.IsNullOrEmpty(data.BoardId))
+                    if (isConnected)
                     {
-                        _ = Task.Run(async () =>
-                        {
-                            try { await _mainframe.PushData(data); }
-                            catch (Exception ex) { Console.WriteLine($"[Push Error] {ex.Message}"); }
-                        });
+                        // 병목 방지를 위해 비동기로 쏘고 다음 보드로 넘어감
+                        _ = _mainframe.PushData(data);
                     }
                 }
             }
@@ -112,7 +89,7 @@ public class BridgeEngine
                 await ScanBoards();
             }
 
-            await Task.Delay(2000); // 2초 간격 유지
+            await Task.Delay(2000); // 2초 주기
         }
     }
 
@@ -137,26 +114,21 @@ public class BridgeEngine
             if (failCount >= 2) break;
             await Task.Delay(50);
         }
-        Console.WriteLine($"[RS485] Scan Done. Active boards: {_activeBoards.Count}");
-        _lcd.Send("OPCODE", $"Scan Done: {_activeBoards.Count}");
+        _lcd.Send("OPCODE", $"Boards: {_activeBoards.Count}");
     }
 
     private async Task<bool> CheckInternetConnectivityAsync()
     {
-        // 너무 잦은 Ping으로 인한 차단을 막기 위해 15초에 한 번만 실제 Ping을 보냅니다.
         if ((DateTime.UtcNow - _lastNetCheckTime).TotalSeconds < 15)
             return _isNetUpCached;
 
         try
         {
             using var ping = new Ping();
-            var reply = await ping.SendPingAsync("8.8.8.8", 1000); // 8.8.8.8(구글 DNS)로 1초 타임아웃 지정
+            var reply = await ping.SendPingAsync("8.8.8.8", 1000);
             _isNetUpCached = reply.Status == IPStatus.Success;
         }
-        catch
-        {
-            _isNetUpCached = false; // 네트워크 어댑터가 없거나 핑 전송 실패 시 false
-        }
+        catch { _isNetUpCached = false; }
 
         _lastNetCheckTime = DateTime.UtcNow;
         return _isNetUpCached;
