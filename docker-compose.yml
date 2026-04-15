@@ -7,6 +7,7 @@ services:
     hostname: ${BRIDGE_NAME}
     environment:
       - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_INSECURE_SKIP_VERIFY=true
       - TS_EXTRA_ARGS=--login-server ${HEADSCALE_URL} --reset
       - TS_STATE_DIR=/var/lib/tailscale
     volumes:
