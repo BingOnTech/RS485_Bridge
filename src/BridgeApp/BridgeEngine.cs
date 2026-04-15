@@ -10,6 +10,10 @@ public class BridgeEngine
     private readonly MainframeClient _mainframe = new();
     private readonly LcdService _lcd = new();
     private List<string> _activeBoards = new();
+    private DateTime _lastNetCheckTime = DateTime.MinValue;
+    private bool _isNetUpCached = false;
+    private bool _wasVpnUp = false;
+    private bool _wasMainframeConnected = false;
 
     public async Task RunAsync()
     {
@@ -39,17 +43,36 @@ public class BridgeEngine
                                                       && x.OperationalStatus == OperationalStatus.Up);
             _lcd.Send("VPN", isVpnUp ? "Online" : "Offline");
 
+            if (isVpnUp != _wasVpnUp)
+            {
+                Console.WriteLine($"[VPN Status] {(isVpnUp ? "Online" : "Offline")}");
+                _wasVpnUp = isVpnUp;
+            }
+
             // 4. Mainframe 체크 및 연결
             if (isVpnUp && !_mainframe.IsConnected)
             {
-                try { await _mainframe.ConnectAsync(url); } catch { }
+                try
+                {
+                    Console.WriteLine($"[Mainframe] Connecting to {url}...");
+                    await _mainframe.ConnectAsync(url);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Mainframe Error] Failed to connect: {ex.Message}");
+                }
             }
             _lcd.Send("MAINFRAME", _mainframe.IsConnected ? "Online" : "Offline");
 
-            // 🌟 시리얼 포트 관리 최적화
-            if (usbExists && !_rs485.IsOpen) // IsOpen 체크 필수
+            if (_mainframe.IsConnected != _wasMainframeConnected)
             {
-                try { _rs485.Open(port); } catch { }
+                Console.WriteLine($"[Mainframe Status] {(_mainframe.IsConnected ? "Online" : "Offline")}");
+                _wasMainframeConnected = _mainframe.IsConnected;
+            }
+
+            if (usbExists && !_rs485.IsOpen)
+            {
+                try { _rs485.Open(port); } catch (Exception ex) { Console.WriteLine($"[RS485 Error] Failed to open: {ex.Message}"); }
             }
 
             // 장비 폴링 루프
@@ -64,7 +87,7 @@ public class BridgeEngine
                     var data = _rs485.Parse(raw);
                     data.BridgeName = _bridgeName;
 
-                    // 🌟 비동기 데이터 전송 (병목 방지)
+                    // 병목 방지용 비동기 데이터 전송
                     if (_mainframe.IsConnected && !string.IsNullOrEmpty(data.BoardId))
                     {
                         _ = Task.Run(async () =>
@@ -110,15 +133,22 @@ public class BridgeEngine
 
     private async Task<bool> CheckInternetConnectivityAsync()
     {
+        // 너무 잦은 Ping으로 인한 차단을 막기 위해 15초에 한 번만 실제 Ping을 보냅니다.
+        if ((DateTime.UtcNow - _lastNetCheckTime).TotalSeconds < 15)
+            return _isNetUpCached;
+
         try
         {
             using var ping = new Ping();
             var reply = await ping.SendPingAsync("8.8.8.8", 1000); // 8.8.8.8(구글 DNS)로 1초 타임아웃 지정
-            return reply.Status == IPStatus.Success;
+            _isNetUpCached = reply.Status == IPStatus.Success;
         }
         catch
         {
-            return false; // 네트워크 어댑터가 없거나 핑 전송 실패 시 false
+            _isNetUpCached = false; // 네트워크 어댑터가 없거나 핑 전송 실패 시 false
         }
+
+        _lastNetCheckTime = DateTime.UtcNow;
+        return _isNetUpCached;
     }
 }
