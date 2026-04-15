@@ -5,23 +5,41 @@ namespace BridgeApp.Services;
 
 public class Rs485Service
 {
-    private SerialPort _port;
+    private SerialPort? _port;
+
+    // 🌟 외부에서 포트 상태를 확인할 수 있도록 공개!
+    public bool IsOpen => _port != null && _port.IsOpen;
 
     public void Open(string portName)
     {
+        if (_port != null && _port.IsOpen) _port.Close();
+
         _port = new SerialPort(portName, 9600, Parity.None, 8, StopBits.One);
+        _port.ReadTimeout = 500;
+        _port.WriteTimeout = 500;
         _port.Open();
     }
 
     public string SendRequest(string command)
     {
-        if (!_port.IsOpen) return "";
-        _port.DiscardInBuffer();
-        _port.Write(command);
-        Thread.Sleep(1200); // 장비 응답 대기 시간
-        return _port.ReadExisting();
-    }
+        // 🌟 _port가 null일 경우를 대비한 체크
+        if (_port == null || !_port.IsOpen) return "";
 
+        try
+        {
+            _port.DiscardInBuffer();
+            _port.Write(command);
+
+            // 🌟 1.2초는 꽤 긴 시간입니다. 장비가 빠르다면 200~500ms로 줄여보세요!
+            Thread.Sleep(1200);
+
+            return _port.ReadExisting();
+        }
+        catch
+        {
+            return "";
+        }
+    }
     public CommandBoardData Parse(string raw)
     {
         var data = new CommandBoardData();
@@ -36,7 +54,7 @@ public class Rs485Service
         {
             int shift = i * 2;
             var chamber = new Chamber { Index = i + 1 };
-            
+
             // 비트 추출 (파이썬 로직 이식)
             chamber.LevelLow = ((levelByte >> shift) & 1) == 1;
             chamber.LevelHigh = ((levelByte >> (shift + 1)) & 1) == 1;

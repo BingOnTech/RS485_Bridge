@@ -43,8 +43,17 @@ public class LcdService
         }
     }
 
-    public void UpdateStatus(string category, string message) => SendToPython("STATUS", $"{category}: {message}");
-    public void UpdateNet(bool connected) => SendToPython("NET", connected ? "Connected" : "Disconnected");
-    public void UpdateMainframe(bool connected) => SendToPython("MAINFRAME", connected ? "Online" : "Offline");
-    public void UpdateOpCode(string code) => SendToPython("OPCODE", code);
+    public void Send(string key, string value)
+    {
+        if (_inputStream != null && _pythonProcess != null && !_pythonProcess.HasExited)
+        {
+            _inputStream.WriteLine($"{key}|{value}");
+            _inputStream.Flush();
+        }
+    }
+
+    public void UpdateStatus(string category, string message) => Send("STATUS", $"{category}: {message}");
+    public void UpdateNet(bool connected) => Send("NET", connected ? "Online" : "Offline");
+    public void UpdateMainframe(bool connected) => Send("MAINFRAME", connected ? "Online" : "Offline");
+    public void UpdateOpCode(string code) => Send("OPCODE", code);
 }
