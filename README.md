@@ -7,4 +7,6 @@ cd RS485-BRIDGE
 
 docker compose up -d --build # 서비스 업로드
 docker logs -f rs485-bridge # 실시간 로그 확인
+docker compose down # 서비스 종료
+sudo sh run.sh # 
 ```

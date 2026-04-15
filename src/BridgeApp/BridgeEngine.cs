@@ -12,13 +12,14 @@ public class BridgeEngine
 
     public async Task RunAsync()
     {
-        // 1. 초기화 (LCD 및 시리얼)
+        // 1. LCD 및 시리얼 초기화
         Console.WriteLine("[Bridge] Booting...");
         _lcd.Start(); // 🌟 LCD 서비스 시작
         _lcd.UpdateStatus("System", "Initialising...");
 
-        // 1. 초기화
-        string port = OperatingSystem.IsWindows() ? "COM3" : "/dev/ttyUSB0";
+        // 1. USB포트 초기화
+        string port = Environment.GetEnvironmentVariable("RS485_PORT") 
+              ?? (OperatingSystem.IsWindows() ? "COM3" : "/dev/rs485");
         _rs485.Open(port);
         _lcd.UpdateOpCode($"Serial Open: {port}");
 

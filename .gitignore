@@ -1,6 +1,6 @@
 # 1. C# 빌드 결과물 (가장 중요: 절대 올리면 안 됨)
-[Bb]in/
-[Oo]bj/
+/src/BridgeApp/[Bb]in/
+/src/BridgeApp/obj/*
 
 # 2. Visual Studio Code 임시 파일
 .vscode/*
