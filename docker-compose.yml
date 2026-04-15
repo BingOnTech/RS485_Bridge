@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   tailscale:
-    image: tailscale/tailscale:1.74.0
+    image: tailscale/tailscale:v1.74.0
     container_name: ts-bridge
     hostname: ${BRIDGE_NAME} # Headscale에 등록될 이름
     environment:
