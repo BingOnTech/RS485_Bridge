@@ -28,14 +28,15 @@ public class BridgeEngine
             bool usbExists = OperatingSystem.IsWindows() || System.IO.File.Exists(port);
             _lcd.Send("USB", usbExists ? "Connected" : "Disconnected");
 
+            var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
+
             // 2. Internet 체크
-            bool isNetUp = NetworkInterface.GetIsNetworkAvailable();
+            bool isNetUp = await CheckInternetConnectivityAsync();
             _lcd.Send("NET", isNetUp ? "Online" : "Offline");
 
             // 3. VPN 체크
-            bool isVpnUp = NetworkInterface.GetAllNetworkInterfaces()
-                           .Any(x => (x.Name.Contains("tailscale") || x.Description.Contains("Tailscale"))
-                                     && x.OperationalStatus == OperationalStatus.Up);
+            bool isVpnUp = networkInterfaces.Any(x => (x.Name.Contains("tailscale") || x.Description.Contains("Tailscale"))
+                                                      && x.OperationalStatus == OperationalStatus.Up);
             _lcd.Send("VPN", isVpnUp ? "Online" : "Offline");
 
             // 4. Mainframe 체크 및 연결
@@ -105,5 +106,19 @@ public class BridgeEngine
             await Task.Delay(50);
         }
         _lcd.Send("OPCODE", $"Scan Done: {_activeBoards.Count}");
+    }
+
+    private async Task<bool> CheckInternetConnectivityAsync()
+    {
+        try
+        {
+            using var ping = new Ping();
+            var reply = await ping.SendPingAsync("8.8.8.8", 1000); // 8.8.8.8(구글 DNS)로 1초 타임아웃 지정
+            return reply.Status == IPStatus.Success;
+        }
+        catch
+        {
+            return false; // 네트워크 어댑터가 없거나 핑 전송 실패 시 false
+        }
     }
 }
