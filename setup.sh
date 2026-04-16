@@ -35,10 +35,9 @@ cd ~/BingOn_Bridge
 if [ ! -f .env ]; then
     echo "📝 기본 .env 파일을 생성합니다. (나중에 실제 값으로 수정하세요)"
     cat <<EOT >> .env
-BRIDGE_NAME=Bridge_$(hostname)
-HEADSCALE_URL=http://louk342.iptime.org:8080
-TS_AUTHKEY=이곳에_새_인증키를_넣으세요
-MAINFRAME_URL=http://100.64.0.1:5000/bridgeHub
+BRIDGE_NAME=
+MAINFRAME_URL=
+ENCRYPTION_KEY=
 RS485_PORT=/dev/rs485
 EOT
     echo "✅ .env 생성 완료"
