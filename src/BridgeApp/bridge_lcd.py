@@ -1,6 +1,7 @@
 import sys
 import os
 import numpy as np
+import signal
 from PIL import Image, ImageDraw, ImageFont
 
 # LCD 장치 경로 확인
@@ -8,7 +9,6 @@ FB_PATH = "/dev/fb1" if os.path.exists("/dev/fb1") else "/dev/fb0"
 
 
 def draw_status(data_map):
-    # 480x320 캔버스 생성
     img = Image.new("RGB", (480, 320), color=(0, 0, 0))
     draw = ImageDraw.Draw(img)
 
@@ -86,3 +86,18 @@ if __name__ == "__main__":
                 draw_status(current_data)
             except ValueError:
                 pass
+
+
+def clear_screen():
+    # 검은색 이미지로 화면 지우기
+    img = Image.new("RGB", (480, 320), color=(0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    draw.text((10, 10), "SYSTEM STOPED", fill=(255, 255, 255))
+
+
+def handler(signum, frame):
+    clear_screen()
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, handler)
+signal.signal(signal.SIGINT, handler)

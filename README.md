@@ -1,5 +1,11 @@
 # RS485-Bridge
 
+## 배선도
+
+- GPIO21 - 전원 스위치 - GND
+
+## 자주 쓰는 명령어
+
 ```sh
 sudo usermod -a -G dialout $USER # 포트 접근 오류 발생 시
 git clone https://github.com/BingOnTech/RS485_Bridge.git

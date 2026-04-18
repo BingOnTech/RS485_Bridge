@@ -110,9 +110,8 @@ public class BridgeEngine
     {
         _lcd.Send("OPCODE", "Scanning...");
         _activeBoards.Clear();
-        int failCount = 0;
 
-        for (int i = 1; i <= 99; i++)
+        for (int i = 1; i <= 30; i++)
         {
             string id = i.ToString("D2");
             string res = _rs485.SendRequest($"$${id}10;");
@@ -120,12 +119,8 @@ public class BridgeEngine
             if (!string.IsNullOrEmpty(res) && res.Contains("$" + id))
             {
                 _activeBoards.Add(id);
-                failCount = 0;
             }
-            else failCount++;
-
-            if (failCount >= 2) break;
-            await Task.Delay(50);
+            await Task.Delay(30);
         }
         _lcd.Send("OPCODE", $"Boards: {_activeBoards.Count}");
     }
