@@ -79,8 +79,21 @@ public class BridgeEngine
 
                     if (isConnected)
                     {
-                        // 병목 방지를 위해 비동기로 쏘고 다음 보드로 넘어감
-                        _ = _mainframe.PushData(data);
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                // 1. 객체를 JSON 문자열로 직렬화
+                                string json = System.Text.Json.JsonSerializer.Serialize(data);
+
+                                // 2. AES 암호화
+                                string encryptedData = CryptoUtil.Encrypt(json);
+
+                                // 3. 암호화된 문자열 전송 (Hub 메서드 호출)
+                                await _mainframe.PushData(encryptedData);
+                            }
+                            catch (Exception ex) { Console.WriteLine($"[Encrypt Error] {ex.Message}"); }
+                        });
                     }
                 }
             }

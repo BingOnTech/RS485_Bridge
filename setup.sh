@@ -28,7 +28,7 @@ echo "✅ /dev/rs485 심볼릭 링크 생성 완료"
 
 # 4. 프로젝트 폴더 구조 생성
 echo "📂 작업 디렉토리 생성 중..."
-mkdir -p ~/BingOn_Bridge/tailscale-data
+mkdir -p ~/BingOn_Bridge/
 cd ~/BingOn_Bridge
 
 # 5. 기본 .env 파일 생성 (템플릿)
